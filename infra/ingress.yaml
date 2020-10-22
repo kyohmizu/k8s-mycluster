@@ -1,5 +1,5 @@
 ---
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: tekton-triggers
@@ -20,3 +20,25 @@ spec:
   - hosts:
     - tekton.YOUR_DOMAIN
     secretName: tekton-triggers-tls
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: myportfolio
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: letsencrypt-production
+spec:
+  rules:
+  - host: app.YOUR_DOMAIN
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: myportfolio
+          servicePort: 80
+  tls:
+  - hosts:
+    - app.YOUR_DOMAIN
+    secretName: myportfolio-tls
