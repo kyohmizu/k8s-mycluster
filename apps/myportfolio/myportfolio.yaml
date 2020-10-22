@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: myportfolio
-        image: kyohmizu/myportfolio:e97c32331cd5f85b8fa315a3a988d3d3dbf02a6d
+        image: kyohmizu/myportfolio:83e2e49c45ec2d7670d3340d5a3dc2c35b96aa33
         ports:
         - containerPort: 80
 ---
