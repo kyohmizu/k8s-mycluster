@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myportfolio
+  labels:
+    app: myportfolio
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myportfolio
+  template:
+    metadata:
+      labels:
+        app: myportfolio
+    spec:
+      containers:
+      - name: myportfolio
+        image: kyohmizu/myportfolio:e97c32331cd5f85b8fa315a3a988d3d3dbf02a6d
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: myportfolio
+  name: myportfolio
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: myportfolio

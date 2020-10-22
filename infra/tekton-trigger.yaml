@@ -1,0 +1,92 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: github-listener
+  namespace: tekton-pipelines
+spec:
+  serviceAccountName: tekton-sa
+  serviceType: ClusterIP
+  triggers:
+    - template:
+        name: myportfolio-ci-trigger
+      bindings:
+      - ref: myportfolio-ci
+      interceptors:
+        - github:
+            secretRef:
+              secretName: github-webhook-credentials
+              secretKey: github-webhook-secret
+              namespace: tekton-pipelines
+            eventTypes:
+              - push
+        - cel:
+           filter: body.ref == 'refs/heads/master' && !body.commits[0].message.startsWith('[Update manifest]')
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: myportfolio-ci
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: GIT_REPO_APP_URL
+      value: "$(body.repository.url)"
+    - name: COMMIT_HASH
+      value: $(body.after)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: myportfolio-ci-trigger
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: COMMIT_HASH
+    - name: GIT_REPO_APP_URL
+    - name: REGISTRY_REPO
+      description: registry's repo path
+      default: kyohmizu
+    - name: DOMAIN
+      default: kyohmizu
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      name: ci-myportfolio-$(uid)
+      namespace: tekton-pipelines
+    spec:
+      serviceAccountName: tekton-sa
+      timeout: 1h0m0s
+      pipelineRef:
+        name: ci
+      params:
+        - name: COMMIT_HASH
+          value: $(tt.params.COMMIT_HASH)
+        - name: REGISTRY_REPO
+          value: $(tt.params.REGISTRY_REPO)
+        - name: DOMAIN
+          value: $(tt.params.DOMAIN)
+      resources:
+      - name: source-repo-app
+        resourceSpec:
+          type: git
+          params:
+            - name: url
+              value: $(tt.params.GIT_REPO_APP_URL)
+            - name: revision
+              value: $(tt.params.COMMIT_HASH)
+      - name: source-repo-manifest
+        resourceSpec:
+          type: git
+          params:
+            - name: url
+              value: https://github.com/kyohmizu/k8s-mycluster
+            - name: revision
+              value: master
+      - name: image-repo
+        resourceSpec:
+          type: image
+          params:
+            - name: url
+              value: $(tt.params.REGISTRY_REPO)/myportfolio:$(tt.params.COMMIT_HASH)

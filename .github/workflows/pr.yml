@@ -1,0 +1,33 @@
+name: pull request
+
+on:
+  push:
+    branches:
+    - 'ci/**'
+
+jobs:
+  pull_request:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install hub
+        uses: geertvdc/setup-hub@v1.0.0
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout target branch
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.extract_branch.outputs.branch }}
+
+      - name: Create Pull Request
+        env:
+          REVIEWERS: "kyohmizu"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ steps.extract_branch.outputs.branch }}
+        run: |
+          hub pull-request -m "Pull Request from Github Actions" -b master -h $BRANCH_NAME -r "$REVIEWERS"

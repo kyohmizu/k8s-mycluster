@@ -1,0 +1,227 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-sa
+  namespace: tekton-pipelines
+secrets:
+- name: github-credentials
+- name: dockerhub-credentials
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-sa
+  namespace: tekton-pipelines
+rules:
+# Permissions for every EventListener deployment to function
+- apiGroups: ["triggers.tekton.dev"]
+  resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
+  verbs: ["get"]
+- apiGroups: [""]
+  # secrets are only needed for Github/Gitlab interceptors
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+# Permissions to create resources in associated TriggerTemplates
+- apiGroups: ["tekton.dev"]
+  resources: ["pipelineruns", "pipelineresources", "taskruns"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["impersonate"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-sa
+  namespace: tekton-pipelines
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-sa
+subjects:
+- kind: ServiceAccount
+  name: tekton-sa
+  namespace: tekton-pipelines
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: kaniko-build-and-push
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build.
+      default: ./Dockerfile
+    - name: CONTEXT
+      description: The build context used by Kaniko.
+      default: ./
+    - name: EXTRA_ARGS
+      default: ""
+    - name: BUILDER_IMAGE
+      description: The image on which builds will run
+      default: gcr.io/kaniko-project/executor:v0.13.0
+  resources:
+    inputs:
+    - name: source-repo
+      type: git
+    outputs:
+    - name: image-repo
+      type: image
+  steps:
+  - name: build-and-push
+    workingdir: /workspace/source-repo
+    image: $(params.BUILDER_IMAGE)
+    # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
+    # https://github.com/tektoncd/pipeline/pull/706
+    env:
+    - name: DOCKER_CONFIG
+      value: /tekton/home/.docker
+    command:
+    - /kaniko/executor
+    - $(params.EXTRA_ARGS)
+    - --dockerfile=$(params.DOCKERFILE)
+    - --context=/workspace/source-repo/$(params.CONTEXT)
+    - --destination=$(outputs.resources.image-repo.url)
+    - --cache=false
+    - --insecure
+    - --skip-tls-verify
+    resources:
+      limits:
+        cpu: 1000m
+        memory: "1Gi"
+      requests:
+        cpu: 100m
+        memory: "128Mi"
+    securityContext:
+      runAsUser: 0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ci-scripts
+  namespace: tekton-pipelines
+data:
+  upload_manifests.sh: |-
+    #!/bin/bash
+
+    git checkout -b ci/myportfolio-${COMMIT_HASH};
+    git config --global user.email "${TB_GITHUB_USER}@example.com";
+    git config --global user.name "${TB_GITHUB_USER}";
+    sed -i -e "s|image: .*/myportfolio:.*|image: ${DOMAIN}/myportfolio:${COMMIT_HASH}|g" /workspace/source-repo/apps/myportfolio/myportfolio.yaml;
+    git add --all;
+    git commit -m "[Update manifest] myportfolio for new image tag ${COMMIT_HASH}";
+    git push origin ci/myportfolio-${COMMIT_HASH};
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: pull-request-manifest
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: COMMIT_HASH
+    - name: REGISTRY_REPO
+    - name: DOMAIN
+  resources:
+    inputs:
+    - name: source-repo
+      type: git
+  steps:
+  - name: pull-request-manifest
+    workingdir: /workspace/source-repo
+    image: k8stestbed/github-cli:v0.11.1
+    command:
+    - sh
+    - -c
+    - /data/upload_manifests.sh
+    env:
+      - name: DOMAIN
+        value: $(params.DOMAIN)
+      - name: COMMIT_HASH
+        value: $(params.COMMIT_HASH)
+      - name: REGISTRY_REPO
+        value: $(params.REGISTRY_REPO)
+      - name: TB_GITHUB_USER
+        valueFrom:
+          secretKeyRef:
+            name: github-credentials
+            key: username
+      - name: TB_GITHUB_ORG_NAME
+        valueFrom:
+          secretKeyRef:
+            name: github-credentials
+            key: organization
+    resources:
+      limits:
+        cpu: 2
+        memory: "2Gi"
+      requests:
+        cpu: 1
+        memory: "1Gi"
+    securityContext:
+      runAsUser: 0
+    volumeMounts:
+      - name:  entrypoint-cm
+        mountPath: /data
+  volumes:
+    - name: entrypoint-cm
+      configMap:
+        name: ci-scripts
+        defaultMode: 493 # mode 755
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ci
+  namespace: tekton-pipelines
+spec:
+  resources:
+    - name: source-repo-app
+      type: git
+    - name: source-repo-manifest
+      type: git
+    - name: image-repo
+      type: image
+  params:
+  - name: COMMIT_HASH
+  - name: REGISTRY_REPO
+  - name: DOMAIN
+  tasks:
+  - name: build-and-push
+    taskRef:
+      name: kaniko-build-and-push
+    resources:
+      inputs:
+      - name: source-repo
+        resource: source-repo-app
+      outputs:
+      - name: image-repo
+        resource: image-repo
+  - name: pull-request-manifest
+    taskRef:
+      name: pull-request-manifest
+    runAfter:
+    - build-and-push
+    params:
+    - name: COMMIT_HASH
+      value: $(params.COMMIT_HASH)
+    - name: REGISTRY_REPO
+      value: $(params.REGISTRY_REPO)
+    - name: DOMAIN
+      value: $(params.DOMAIN)
+    resources:
+      inputs:
+      - name: source-repo
+        resource: source-repo-manifest
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-webhook-credentials
+  namespace: tekton-pipelines
+type: Opaque
+stringData:
+  github-webhook-secret: sample-github-webhook-secret
+---
