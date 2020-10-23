@@ -1,15 +1,38 @@
-name: Pull Request to master
+name: automerge develop and pull request to master
 
 on:
-  push:
+  pull_request:
+    types:
+      - labeled
+      - unlabeled
+      - synchronize
+      - opened
+      - edited
+      - ready_for_review
+      - reopened
+      - unlocked
+    branches:
+      - develop
+  pull_request_review:
+    types:
+      - submitted
+    branches:
+      - develop
+  check_suite:
+    types:
+      - completed
     branches:
       - develop
 
 jobs:
-  pull_request:
+  automerge:
     runs-on: ubuntu-latest
-
     steps:
+      - name: automerge
+        uses: "pascalgn/automerge-action@v0.12.0"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
       - name: Install hub
         uses: geertvdc/setup-hub@v1.0.0
 

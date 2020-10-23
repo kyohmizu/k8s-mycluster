@@ -9,9 +9,9 @@ on:
 
 jobs:
   pull_request:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
-    if: github.event.pull_request.merged == true
     steps:
       - name: Install hub
         uses: geertvdc/setup-hub@v1.0.0
@@ -28,4 +28,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: develop
         run: |
-          hub pull-request -m "Pull Request from Github Actions" -b master -h $BRANCH_NAME -r "$REVIEWERS"
+          hub pull-request -m "Pull Request from Github Actions" -b master -h $BRANCH_NAME -r "$REVIEWERS" -l automerge
