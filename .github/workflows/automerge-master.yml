@@ -1,4 +1,4 @@
-name: automerge
+name: automerge master
 
 on:
   pull_request:
@@ -12,13 +12,17 @@ on:
       - reopened
       - unlocked
     branches:
-      - develop
+      - master
   pull_request_review:
     types:
       - submitted
+    branches:
+      - master
   check_suite:
     types:
       - completed
+    branches:
+      - master
 
 jobs:
   automerge:
