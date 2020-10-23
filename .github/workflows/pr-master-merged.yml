@@ -1,0 +1,31 @@
+name: Pull Request to master
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - closed
+
+jobs:
+  pull_request:
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Install hub
+        uses: geertvdc/setup-hub@v1.0.0
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout develop
+        uses: actions/checkout@v2
+        with:
+          ref: develop
+
+      - name: Create Pull Request
+        env:
+          REVIEWERS: "kyohmizu"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: develop
+        run: |
+          hub pull-request -m "Pull Request from Github Actions" -b master -h $BRANCH_NAME -r "$REVIEWERS"
