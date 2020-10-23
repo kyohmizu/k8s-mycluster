@@ -1,0 +1,8 @@
+bases:
+- ../base/
+patchesStrategicMerge:
+- ./myportfolio.yaml
+namespace: staging
+commonLabels:
+  environment: staging
+

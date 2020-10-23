@@ -1,0 +1,8 @@
+bases:
+- ../base/
+patchesStrategicMerge:
+- ./myportfolio.yaml
+namespace: production
+commonLabels:
+  environment: production
+

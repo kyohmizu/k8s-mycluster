@@ -1,0 +1,6 @@
+commonLabels:
+  app: myportfolio
+
+resources:
+- myportfolio.yaml
+
