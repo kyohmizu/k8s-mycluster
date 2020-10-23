@@ -1,4 +1,4 @@
-name: pull request
+name: Pull Request to develop
 
 on:
   push:
@@ -30,4 +30,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: ${{ steps.extract_branch.outputs.branch }}
         run: |
-          hub pull-request -m "Pull Request from Github Actions" -b master -h $BRANCH_NAME -r "$REVIEWERS"
+          hub pull-request -m "Pull Request from Github Actions" -b develop -h $BRANCH_NAME -r "$REVIEWERS" -l automerge
