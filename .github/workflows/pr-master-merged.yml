@@ -1,4 +1,4 @@
-name: Pull Request to master
+name: Pull Request to master when merged
 
 on:
   pull_request:
