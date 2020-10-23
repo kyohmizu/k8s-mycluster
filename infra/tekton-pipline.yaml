@@ -109,7 +109,7 @@ data:
     git checkout -b ci/myportfolio-${COMMIT_HASH};
     git config --global user.email "${TB_GITHUB_USER}@example.com";
     git config --global user.name "${TB_GITHUB_USER}";
-    sed -i -e "s|image: .*/myportfolio:.*|image: ${DOMAIN}/myportfolio:${COMMIT_HASH}|g" /workspace/source-repo/apps/myportfolio/myportfolio.yaml;
+    sed -i -e "s|image: .*/myportfolio:.*|image: ${DOMAIN}/myportfolio:${COMMIT_HASH}|g" /workspace/source-repo/apps/myportfolio/base/myportfolio.yaml;
     git add --all;
     git commit -m "[Update manifest] myportfolio for new image tag ${COMMIT_HASH}";
     git push origin ci/myportfolio-${COMMIT_HASH};
