@@ -1,14 +1,33 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: myportfolio
+  name: myportfolio-production
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/kyohmizu/k8s-mycluster.git
-    targetRevision: HEAD
+    targetRevision: master
     path: apps/myportfolio/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myportfolio-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kyohmizu/k8s-mycluster.git
+    targetRevision: develop
+    path: apps/myportfolio/staging
   destination:
     server: https://kubernetes.default.svc
     namespace: default
