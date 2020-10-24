@@ -2,14 +2,20 @@ name: Pull Request to master when merged
 
 on:
   pull_request:
-    branches:
-      - develop
     types:
       - closed
 
 jobs:
+  dump_context:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
   pull_request:
-    if: github.event.pull_request.merged == true
+    if: github.base_ref == 'develop' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
