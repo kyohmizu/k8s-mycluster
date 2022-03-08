@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install hub
-        uses: geertvdc/setup-hub@v1.0.0
-
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout develop
         uses: actions/checkout@v2
